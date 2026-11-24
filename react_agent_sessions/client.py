@@ -66,7 +66,9 @@ async def _status(http: httpx.AsyncClient, session_id: str) -> dict[str, Any]:
 def _open_questions(status: dict[str, Any]) -> list[dict[str, Any]]:
     """The session's pending ask_user callbacks (each carries tool_id, tool_input, turn_number)."""
     return [
-        c for c in status.get("pending_callbacks", []) if c.get("tool_name") == HUMAN_TOOL
+        c
+        for c in status.get("pending_callbacks", [])
+        if c.get("tool_name") == HUMAN_TOOL
     ]
 
 
@@ -132,8 +134,32 @@ async def _handle_callback_requested(
         # Decline (rather than leave hanging) a callback this client doesn't fulfill; the turn
         # continues and the model sees a tool error.
         await _post_callback_result(
-            http, session_id, tool_id, error=f"this client does not fulfill {tool_name!r}"
+            http,
+            session_id,
+            tool_id,
+            error=f"this client does not fulfill {tool_name!r}",
         )
+
+
+async def _handle_approval_requested(
+    http: httpx.AsyncClient, session_id: str, data: dict[str, Any]
+) -> None:
+    """Ask the human to approve a gated tool call, and send the decision (Enter = approve)."""
+    tool_name = data.get("tool_name", "?")
+    tool_input = data.get("tool_input") or {}
+    args = f" {json.dumps(tool_input)}" if tool_input else ""
+    print(f"\n  ! the agent wants to run {tool_name}{args}")
+    answer = (await _ask("  approve? [Y/n]> ")).lower()
+    approved = answer in {"", "y", "yes"}
+    resp = await http.post(
+        "/api/approve",
+        json={
+            "session_id": session_id,
+            "tool_id": data["tool_id"],
+            "approved": approved,
+        },
+    )
+    resp.raise_for_status()
 
 
 async def _observe(
@@ -151,7 +177,9 @@ async def _observe(
     """
     live = open_after is None
     printed_prefix = False  # currently mid-line on a streamed reply
-    streamed_any = False  # any reply_delta rendered this turn → suppress the terminal reply
+    streamed_any = (
+        False  # any reply_delta rendered this turn → suppress the terminal reply
+    )
     async for event_type, data in _iter_sse(resp):
         if not live:
             if event_type == "callback_resolved" and data.get("tool_id") in open_after:
@@ -163,6 +191,16 @@ async def _observe(
                 printed_prefix = True
             streamed_any = True
             print(data.get("text", ""), end="", flush=True)
+        elif event_type == "tool_start":
+            if printed_prefix:
+                print()
+                printed_prefix = False
+            print(f"  · {data.get('tool_name', '?')}")
+        elif event_type == "tool_approval_requested":
+            if printed_prefix:
+                print()
+                printed_prefix = False
+            await _handle_approval_requested(http, session_id, data)
         elif event_type == "callback_requested":
             if printed_prefix:
                 print()
@@ -237,7 +275,9 @@ async def _session_view(http: httpx.AsyncClient, session_id: str) -> None:
     Returns to the picker on `/sessions` or EOF; raises `_Quit` on `/quit`.
     """
     print(f"\nSession {session_id}")
-    await _answer_open_questions(http, session_id)  # surface questions waiting from before we attached
+    await _answer_open_questions(
+        http, session_id
+    )  # surface questions waiting from before we attached
     # Client-local navigation is keyed off ':' — deliberately NOT '/', which is reserved for the
     # harness's own slash commands (operator commands sent to the agent). ':' actions never touch
     # the agent; they just move around this CLI.

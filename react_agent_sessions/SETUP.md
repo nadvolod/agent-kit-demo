@@ -210,7 +210,18 @@ temporal worker deployment set-current-version \
 
 ## 9. Run the local pieces and test
 
-Three terminals, each with the step 2 env exported, in `react_agent_sessions/`:
+**The easy way: one command.** It needs only `TEMPORAL_API_KEY` (read from `~/.zshrc` if it
+isn't exported) and takes the namespace from `agentcore/agentcore.json`:
+
+```bash
+react_agent_sessions/bin/start-local.sh
+```
+
+It starts the session manager and the HTTP API in the background (logs in
+`$TMPDIR/react-agent-sessions-logs/`), waits for both, and opens the terminal chat client. Type `n`
+for a new session, ask a question, and press Enter to approve tool calls. `:quit` stops everything.
+
+**By hand:** three terminals, each with the step 2 env exported, in `react_agent_sessions/`:
 
 ```bash
 uv run temporal-agent-harness session-manager
