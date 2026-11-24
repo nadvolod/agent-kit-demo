@@ -19,11 +19,11 @@
       "envVars": [
         {
           "name": "TEMPORAL_ADDRESS",
-          "value": "ns-agentcore-demo-001.temporal-dev.tmprl-test.cloud:7233"
+          "value": "us-west-2.aws.api.temporal.io:7233"
         },
         {
           "name": "TEMPORAL_NAMESPACE",
-          "value": "ns-agentcore-demo-001.temporal-dev"
+          "value": "test-nikk.a2dd6"
         },
         {
           "name": "REACT_AGENT_SECRET_ID",
@@ -52,6 +52,18 @@
         {
           "name": "SESSION_HEARTBEAT_TABLE",
           "value": "agent-session-heartbeats"
+        },
+        {
+          "name": "USE_ACTIVITY_SESSIONS",
+          "value": "0"
+        },
+        {
+          "name": "MODEL_PROVIDER",
+          "value": "bedrock"
+        },
+        {
+          "name": "BEDROCK_MODEL",
+          "value": "us.openai.gpt-5.6-terra"
         }
       ],
       "lifecycleConfiguration": {
@@ -66,7 +78,8 @@
       },
       "additionalPolicies": [
         "secrets-policy.json",
-        "session-heartbeat-policy.json"
+        "session-heartbeat-policy.json",
+        "bedrock-policy.json"
       ]
     }
   ],

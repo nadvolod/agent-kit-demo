@@ -1,8 +1,8 @@
 [
   {
     "name": "default",
-    "description": "Replace with the AWS account and region to deploy the runtime into",
-    "account": "269172689222",
+    "description": "devdays SSO account (profile devdays), same region as the Temporal namespace",
+    "account": "448592647839",
     "region": "us-west-2"
   }
 ]

@@ -79,6 +79,18 @@ wheels = [
 ]
 
 [[package]]
+name = "aws-bedrock-token-generator"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "botocore" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/39/cf1c2e12bc5a84af0f96a546481213f81fa6e7927d2bbabd81758c6558ca/aws_bedrock_token_generator-1.1.0.tar.gz", hash = "sha256:95ccb07f63a91ac486561f6df05cc4e04784c8ff5086dc687ed9c5fd3ab1b5ba", size = 19123, upload-time = "2025-07-29T19:53:19.511Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/fd/745ece98870c3824d294bcdce5dc5e15381188a41bc80832c246b205e40e/aws_bedrock_token_generator-1.1.0-py3-none-any.whl", hash = "sha256:bd12854f7c7e52dde5d980d369379f12d0cc5f0855099d87f38688b0f9de5cd4", size = 10291, upload-time = "2025-07-29T19:53:18.704Z" },
+]
+
+[[package]]
 name = "aws-opentelemetry-distro"
 version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2543,6 +2555,7 @@ version = "0.1.0"
 source = { virtual = "." }
 default-groups = ["dev", "local"]
 dependencies = [
+    { name = "aws-bedrock-token-generator" },
     { name = "aws-opentelemetry-distro" },
     { name = "bedrock-agentcore" },
     { name = "boto3" },
@@ -2565,6 +2578,7 @@ local = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aws-bedrock-token-generator", specifier = ">=1.0" },
     { name = "aws-opentelemetry-distro", specifier = ">=0.22.0" },
     { name = "bedrock-agentcore", specifier = ">=1.9.1" },
     { name = "boto3", specifier = ">=1.35" },
@@ -3008,7 +3022,7 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { filename = "temporalio-1.34.0+sessions-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:4b0eb009cd64d2757393e2c901fd47aed55169d9eaeb9477bc1a2db83a2023e0" },
+    { filename = "temporalio-1.34.0+sessions-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:5ab9b18c7ce51f5a5d2bddc66135bbcf05b71378ac50b3024631cf257525960a" },
 ]
 
 [package.metadata]
@@ -3059,7 +3073,7 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { filename = "temporalio-1.34.0+sessions-cp310-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:33de1e4c715c394c22abf8b43204a7585bd373fe5d0502c78909f29b6bfe11c4" },
+    { filename = "temporalio-1.34.0+sessions-cp310-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:fc81e88071c3a731213109f277dcb1cd8f87e561bb3ea66f24cd089804927f52" },
 ]
 
 [package.metadata]

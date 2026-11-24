@@ -17,6 +17,7 @@ dependencies = [
     # which openai 3.9.0 removed; newer versions fail every streamed tool call. 3.8.0 is
     # what the harness itself locks. See tests/test_openai_pin.py.
     "openai==3.8.0",
+    "aws-bedrock-token-generator>=1.0",
 ]
 
 [dependency-groups]

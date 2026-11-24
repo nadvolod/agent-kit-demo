@@ -16,7 +16,9 @@ def heartbeat_items(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     """Route the session heartbeat to an in-memory list instead of DynamoDB."""
     items: list[dict] = []
     monkeypatch.setattr(agentcore_worker, "HEARTBEAT_TABLE", "heartbeats")
-    monkeypatch.setattr(agentcore_worker, "_heartbeat_writer", lambda table: items.append)
+    monkeypatch.setattr(
+        agentcore_worker, "_heartbeat_writer", lambda table: items.append
+    )
     monkeypatch.setattr(agentcore_worker, "_heartbeat", None)
     monkeypatch.setattr(agentcore_worker, "_worker", None)
     yield items
@@ -148,7 +150,10 @@ async def test_session_goes_idle_while_heartbeat_keeps_beating(
 
 
 def test_worker_identity_names_the_agentcore_session() -> None:
-    assert agentcore_worker.worker_identity("runtime-session-1") == "agentcore:runtime-session-1"
+    assert (
+        agentcore_worker.worker_identity("runtime-session-1")
+        == "agentcore:runtime-session-1"
+    )
     assert agentcore_worker.worker_identity(None) is None
 
 
@@ -180,3 +185,34 @@ async def test_session_reports_standby_as_soon_as_the_worker_starts_draining(
     await agentcore_worker.poll_until_idle(worker, ActivityTracker(), debounce=0.001)
 
     assert worker.reported_at_drain_start["worker_running"] is False
+
+
+def test_session_wiring_enabled_binds_worker_to_the_session() -> None:
+    config, interceptors = agentcore_worker.session_wiring("sess-1", enabled=True)
+
+    assert config is not None
+    assert any(
+        isinstance(i, agentcore_worker.ActivitySessionInterceptor) for i in interceptors
+    )
+
+
+def test_session_wiring_disabled_runs_a_plain_versioned_worker() -> None:
+    config, interceptors = agentcore_worker.session_wiring("sess-1", enabled=False)
+
+    assert config is None
+    assert interceptors == []
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(None, True), ("1", True), ("true", True), ("0", False), ("false", False)],
+)
+def test_use_activity_sessions_env(
+    monkeypatch: pytest.MonkeyPatch, value: str | None, expected: bool
+) -> None:
+    if value is None:
+        monkeypatch.delenv("USE_ACTIVITY_SESSIONS", raising=False)
+    else:
+        monkeypatch.setenv("USE_ACTIVITY_SESSIONS", value)
+
+    assert agentcore_worker.activity_sessions_enabled() is expected

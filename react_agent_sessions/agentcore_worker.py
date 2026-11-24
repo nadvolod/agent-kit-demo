@@ -70,9 +70,11 @@ from temporalio.worker import (
     Worker,
     WorkerDeploymentConfig,
     WorkerDeploymentVersion,
+    WorkerSessionConfig,
 )
 
 from activity_sessions import ActivitySessionInterceptor, session_config_for
+from bedrock_model import model_provider_from_env
 from human_tools import HUMAN_TOOLS
 from runtime_secrets import load_secrets_into_env
 from session_heartbeat import SessionHeartbeat
@@ -96,7 +98,12 @@ WORKER_TASK_QUEUE = os.environ.get("REACT_AGENT_TASK_QUEUE", TASK_QUEUE)
 # The Secrets Manager secret (JSON) holding the keys below. Unset for local runs, where the
 # keys come from the shell environment instead.
 SECRET_ID = os.environ.get("REACT_AGENT_SECRET_ID")
-SECRET_KEYS = ["TEMPORAL_API_KEY", "OPENAI_API_KEY"]
+# OPENAI_API_KEY is only needed when the model calls go to the OpenAI API (see bedrock_model.py).
+SECRET_KEYS = ["TEMPORAL_API_KEY"] + (
+    []
+    if os.environ.get("MODEL_PROVIDER", "openai").strip().lower() == "bedrock"
+    else ["OPENAI_API_KEY"]
+)
 
 # Session Workers require a fixed-size activity slot supplier, which is what
 # max_concurrent_activities (without a tuner) gives.
@@ -109,6 +116,32 @@ DRAIN = timedelta(seconds=120)
 # How often the SDK reports this Worker to the Temporal server (read back with ListWorkers). A new
 # Worker first shows there one interval after it starts, so keep it short for the status page.
 WORKER_HEARTBEAT = timedelta(seconds=2)
+
+
+def activity_sessions_enabled() -> bool:
+    """USE_ACTIVITY_SESSIONS (default on). Turn off on a namespace without worker sessions.
+
+    Production Temporal Cloud doesn't have the prerelease worker-sessions feature yet. There a
+    session-mode Worker never receives tasks, so set USE_ACTIVITY_SESSIONS=0 to run as an ordinary
+    versioned serverless Worker (activities may then land on other microVMs).
+    """
+    return os.environ.get("USE_ACTIVITY_SESSIONS", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+
+
+def session_wiring(
+    session_id: str | None, *, enabled: bool
+) -> tuple[WorkerSessionConfig | None, list[Interceptor]]:
+    """The Worker's session config and session interceptors, or neither when sessions are off."""
+    if not enabled:
+        return None, []
+    return session_config_for(session_id), [ActivitySessionInterceptor()]
+
+
 # The DynamoDB table for the session heartbeat. Unset (local runs) turns the heartbeat off.
 HEARTBEAT_TABLE = os.environ.get("SESSION_HEARTBEAT_TABLE")
 
@@ -170,6 +203,9 @@ def _openai_agents_plugin() -> OpenAIAgentsPlugin:
             streaming_batch_interval=timedelta(milliseconds=250),
         ),
         observer_factory=harness_observer_factory,
+        # MODEL_PROVIDER=bedrock serves model calls from Bedrock (see bedrock_model.py);
+        # None keeps the plugin's default OpenAI provider.
+        model_provider=model_provider_from_env(),
     )
 
 
@@ -181,7 +217,9 @@ def worker_identity(session_id: str | None) -> str | None:
 @functools.cache
 def _temporal_runtime() -> Runtime:
     # Created once: each Runtime starts its own thread pool.
-    return Runtime(telemetry=TelemetryConfig(), worker_heartbeat_interval=WORKER_HEARTBEAT)
+    return Runtime(
+        telemetry=TelemetryConfig(), worker_heartbeat_interval=WORKER_HEARTBEAT
+    )
 
 
 def _heartbeat_writer(table_name: str):
@@ -227,20 +265,23 @@ async def run_worker(session_id: str | None) -> None:
     )
 
     tracker = ActivityTracker()
+    sessions = activity_sessions_enabled()
+    session_config, session_interceptors = session_wiring(session_id, enabled=sessions)
     log.info(
-        "polling %s as %s/%s (session %s)",
+        "polling %s as %s/%s (session %s, activity sessions %s)",
         WORKER_TASK_QUEUE,
         DEPLOYMENT_NAME,
         BUILD_ID,
         session_id,
+        "on" if sessions else "off",
     )
     worker = Worker(
         client,
         task_queue=WORKER_TASK_QUEUE,
         workflows=[ReactAgentWorkflow],
         max_concurrent_activities=ACTIVITY_SLOTS,
-        session_config=session_config_for(session_id),
-        interceptors=[tracker, ActivitySessionInterceptor()],
+        session_config=session_config,
+        interceptors=[tracker, *session_interceptors],
         deployment_config=WorkerDeploymentConfig(
             version=WorkerDeploymentVersion(
                 deployment_name=DEPLOYMENT_NAME, build_id=BUILD_ID
