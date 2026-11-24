@@ -221,6 +221,26 @@ It starts the session manager and the HTTP API in the background (logs in
 `$TMPDIR/react-agent-sessions-logs/`), waits for both, and opens the terminal chat client. Type `n`
 for a new session, ask a question, and press Enter to approve tool calls. `:quit` stops everything.
 
+**Web UI:**
+
+```bash
+react_agent_sessions/bin/start-local.sh --ui
+```
+
+The same backend, plus the agent kit's web UI at http://127.0.0.1:5173, which opens in your
+browser. Click **New session** → **Start session**, ask a question, and approve tool calls in the
+chat. The UI also shows the state flow and a per-call latency timeline. Ctrl-C stops everything.
+
+- It runs the UI from `../temporal-agent-kit` (bundled in this branch). That copy has the fix that
+  lets you start a session while the serverless Worker is scaled to zero. **Don't use the UI on
+  :8000**: the one built into `serve` refuses to start sessions when no Worker is polling.
+- The first `--ui` run installs the UI's packages (a minute or two) with the pnpm version the kit
+  pins (`packageManager` in `temporal-agent-kit/typescript/package.json`, currently 12.8.2). It
+  uses `npx`, so your global pnpm version doesn't matter. `ERR_PNPM_IGNORED_BUILDS` in the install
+  log is expected and harmless.
+- The **New session** dialog may warn "No worker is polling react-agent-sessions". That's expected
+  for a Worker scaled to zero; **Start session** works anyway and wakes the AgentCore runtime.
+
 **By hand:** three terminals, each with the step 2 env exported, in `react_agent_sessions/`:
 
 ```bash
